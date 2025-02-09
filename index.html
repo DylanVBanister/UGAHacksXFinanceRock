@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>UGAHacks X</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet">
+		<style>
+			#blocker {
+				position: absolute;
+				width: 100%;
+				height: 100%;
+				background: black;
+				color: white;
+			}
+
+			#instructions {
+				width: 100%;
+				height: 100%;
+
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+
+				text-align: center;
+				font-size: 14px;
+				cursor: pointer;
+			}
+			#popup {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100vw;
+				height: 100vh;
+				background: rgba(0, 0, 0, 0.8);
+				color: white;
+				display: none; /* Hidden by default */
+				justify-content: right;
+				text-align: right;
+				font-size: 24px;
+				z-index: 100;
+			}
+			#close {
+				position: absolute;
+				top: 20px;
+				right: 20px;
+				background: red;
+				color: white;
+				padding: 10px;
+				border: none;
+				font-size: 18px;
+			}
+			#question {
+				position: absolute;
+				top: 10%;
+				right: 10%;
+				background: black;
+				color: white;
+				font-size: 38px;
+				font-family: sans-serif;
+				text-align: center;
+			}
+			#answer1 {
+				position: absolute;
+				top: 50%;
+				right: 30%;
+				background: black;
+				color: white;
+				font-size: 38px;
+				font-family: sans-serif;
+				text-align: center;
+			}
+			#answer2 {
+				position: absolute;
+				top: 50%;
+				right: 10%;
+				background: black;
+				color: white;
+				font-size: 38px;
+				font-family: sans-serif;
+				text-align: center;
+			}
+			#correct {
+				display: none;
+				position: absolute;
+				top: 10%;
+				right: 10%;
+				background: darkgreen;
+				color: white;
+				font-size: 38px;
+				font-family: sans-serif;
+				text-align: center;
+			}
+			#incorrect {
+				display: none;
+				position: absolute;
+				top: 10%;
+				right: 10%;
+				background: darkred;
+				color: white;
+				font-size: 38px;
+				font-family: sans-serif;
+				text-align: center;
+			}
+			#canInteract {
+				position: absolute;
+				top: 20px;
+				left: 20px;
+				background: blue;
+				color: white;
+				display: flex;
+				justify-content: right;
+				text-align: right;
+				font-size: 54px;
+				z-index: 100;
+				pointer-events: none; /* Click-through */
+				border-radius: 20px;
+			}
+			#tickets {
+				position: absolute;
+				top: 80%;
+				left: 83%;
+				background: gold;
+				color: black;
+				display: flex;
+				justify-content: right;
+				text-align: right;
+				font-size: 54px;
+				z-index: 100;
+				pointer-events: none; /* Click-through */
+				border-radius: 20px;
+			}
+			body, html { /* prevents scrollbars */
+				margin: 0;
+			}
+			.incomeStatementTest {
+				position: absolute;
+				margin-right: 50%;
+				width: 50%;
+				height: 100%;
+				object-fit: fill;
+				z-index: 101;
+				display: block;
+			}
+			.p1 {
+				font-family: sans-serif;
+			}
+
+		</style>
+	</head>
+	<body>
+		<div id="blocker">
+			<div id="instructions">
+				<p class = "p1" style="font-size:36px">
+					Click to play
+				</p>
+				<p class = "p1" style="font-size:36px">
+					Move: WASD<br/>
+					Look: MOUSE<br/>
+					Music:<br/>
+					"Big Rock"<br/>
+					Kevin MacLeod (incompetech.com)<br/>
+					Licensed under Creative Commons: By Attribution 3.0<br/>
+					https://creativecommons.org/licenses/by/3.0/
+				</p>
+			</div>
+		</div>
+		<div id="popup">
+			<img src="/googleIncomeStatement.png" class="incomeStatementTest" alt="Google Income Statement">
+			<button id="close">Press Q to Close</button>
+			<p id="question"></p>
+			<p id="answer1"></p>
+			<p id="answer2"></p>
+			<p id="correct"></p>
+			<p id="incorrect"></p>
+		</div>
+		<div id="canInteract">
+			<p class = "p1">Press 'E' to Interact!</p>
+		</div>
+		<div id="tickets">
+			<p class = "p1">Tickets: 0</p>
+		</div>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../build/three.module.js",
+					"three/addons/": "./jsm/"
+				}
+			}
+		</script>
+
+		<script type="module">
+
+			import * as THREE from 'three';
+
+			import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+			let camera, scene, renderer, controls;
+
+			const objects = [];
+
+			let raycaster;
+
+			let moveForward = false;
+			let moveBackward = false;
+			let moveLeft = false;
+			let moveRight = false;
+
+			let prevTime = performance.now();
+			const velocity = new THREE.Vector3();
+			const direction = new THREE.Vector3();
+
+			init();
+
+			function init() {
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera.position.y = 10;
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+				scene.fog = new THREE.Fog( 0x000000, 0, 750 );
+
+				const light = new THREE.HemisphereLight( 0xeeeeff, 0x777788, 2.5 );
+				light.position.set( 0.5, 1, 0.75 );
+				scene.add( light );
+
+				controls = new PointerLockControls( camera, document.body );
+
+				const blocker = document.getElementById( 'blocker' );
+				const instructions = document.getElementById( 'instructions' );
+
+				instructions.addEventListener( 'click', function () {
+
+					controls.lock();
+
+				} );
+
+				controls.addEventListener( 'lock', function () {
+
+					instructions.style.display = 'none';
+					blocker.style.display = 'none';
+
+				} );
+
+				controls.addEventListener( 'unlock', function () {
+
+					blocker.style.display = 'block';
+					instructions.style.display = '';
+
+				} );
+
+				scene.add( controls.object );
+
+				const onKeyDown = function ( event ) {
+
+					switch ( event.code ) {
+
+						case 'ArrowUp':
+						case 'KeyW':
+							moveForward = true;
+							break;
+
+						case 'ArrowLeft':
+						case 'KeyA':
+							moveLeft = true;
+							break;
+
+						case 'ArrowDown':
+						case 'KeyS':
+							moveBackward = true;
+							break;
+
+						case 'ArrowRight':
+						case 'KeyD':
+							moveRight = true;
+							break;
+
+					}
+
+				};
+
+				const onKeyUp = function ( event ) {
+
+					switch ( event.code ) {
+
+						case 'ArrowUp':
+						case 'KeyW':
+							moveForward = false;
+							break;
+
+						case 'ArrowLeft':
+						case 'KeyA':
+							moveLeft = false;
+							break;
+
+						case 'ArrowDown':
+						case 'KeyS':
+							moveBackward = false;
+							break;
+
+						case 'ArrowRight':
+						case 'KeyD':
+							moveRight = false;
+							break;
+
+					}
+
+				};
+
+				document.addEventListener( 'keydown', onKeyDown );
+				document.addEventListener( 'keyup', onKeyUp );
+
+				raycaster = new THREE.Raycaster( new THREE.Vector3(), new THREE.Vector3( 0, - 1, 0 ), 0, 10 );
+
+				// GEOMETRY
+
+				const textureLoader = new THREE.TextureLoader();
+				const texture = textureLoader.load('./starmap.jpg');
+
+				const geometry = new THREE.BoxGeometry(1000, 1000, 1000);
+				const material = new THREE.MeshBasicMaterial({
+					map: texture,
+					side: THREE.BackSide
+				});
+				const cube = new THREE.Mesh(geometry, material);
+
+				scene.add(cube);
+
+				//
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setAnimationLoop( animate );
+				document.body.appendChild( renderer.domElement );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize );
+
+				// IMPORTING GLTF
+				const mapLoader = new GLTFLoader();
+				mapLoader.load(
+						'./models/scene.gltf', // Adjust path if needed
+						function (gltf) {
+							scene.add(gltf.scene);
+							console.log("Model loaded successfully!");
+						}
+				);
+
+				// HANDLE AUDIO
+				const listener = new THREE.AudioListener();
+				camera.add(listener);
+				const audioLoader = new THREE.AudioLoader();
+
+				const backgroundSound = new THREE.Audio(listener)
+
+				audioLoader.load(
+						`./BigRock.mp3`,
+						function (buffer) {
+						backgroundSound.setBuffer(buffer);
+						backgroundSound.setLoop(true);
+						backgroundSound.setVolume(.02);
+						backgroundSound.play();
+						}
+				);
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			// INTERACTION
+			let inRange = 'none';
+			let controlsDisabled = false;
+			let tickets = 0;
+
+			const beanGuy1 = new THREE.Vector3( 10.324, 7.707, -164.556);
+			//let cubeSolved = false;
+
+			const beanGuy2 = new THREE.Vector3( -149.225, 7.707, -78.340);
+
+			const beanGuy3 = new THREE.Vector3( 123.170, 7.707, -60.991);
+
+			function interact ( event ) {
+				switch ( inRange ) {
+					case 'none':
+						break;
+
+					case 'beanGuy1':
+						document.getElementById('question').innerHTML = 'Hello! I was having some trouble<br>reading this balance sheet!<br>Is this company making a profit?'
+						document.getElementById('answer1').innerHTML = 'Yes<br>(Press 1)'
+						document.getElementById('answer2').innerHTML = 'No<br>(Press 2)'
+						document.getElementById('correct').innerHTML = 'Correct!<br>According to the balance sheet,<br>net income is positive.'
+						document.getElementById('incorrect').innerHTML = 'Incorrect!<br>According to the balance sheet,<br>net income is positive.'
+						break;
+
+					case 'beanGuy2':
+						document.getElementById('question').innerHTML = 'Could you help me out here?<br>Is this company running a deficit?<br>My boss needs the info and<br>I am really under qualified for this<br> I just like listening to rock n roll :)'
+						document.getElementById('answer1').innerHTML = 'No<br>(Press 1)'
+						document.getElementById('answer2').innerHTML = 'Yes<br>(Press 2)'
+						document.getElementById('correct').innerHTML = 'Correct!<br>According to the balance sheet,<br>net income is positive.'
+						document.getElementById('incorrect').innerHTML = 'Incorrect!<br>According to the balance sheet,<br>net income is positive.'
+						break;
+
+					case 'beanGuy3':
+						document.getElementById('question').innerHTML = 'Are we on track for success?<br>I wish I was a rock star :('
+						document.getElementById('answer1').innerHTML = 'Yes<br>(Press 1)'
+						document.getElementById('answer2').innerHTML = 'No<br>(Press 2)'
+						document.getElementById('correct').innerHTML = 'Correct!<br>According to the balance sheet,<br>profit is increasing every year.'
+						document.getElementById('incorrect').innerHTML = 'Incorrect!<br>According to the balance sheet,<br>profit is increasing every year.'
+						break;
+				}
+
+				switch ( event.code ) {
+					case 'KeyE': // interact
+						if (inRange !== 'none') {
+							controlsDisabled = true;
+							document.getElementById('canInteract').style.display = 'none';
+							document.getElementById('popup').style.display = 'flex';
+							document.getElementById('question').style.display = 'flex';
+							document.getElementById('answer1').style.display = 'flex';
+							document.getElementById('answer2').style.display = 'flex';
+							document.getElementById('correct').style.display = 'none';
+							document.getElementById('incorrect').style.display = 'none';
+
+						}
+						break;
+
+					case 'KeyQ': // quit
+						controlsDisabled = false;
+						document.getElementById('canInteract').style.display = 'flex';
+						document.getElementById('popup').style.display = 'none';
+						break;
+
+					case 'Digit1': // correct
+						document.getElementById('question').style.display = 'none';
+						document.getElementById('answer1').style.display = 'none';
+						document.getElementById('answer2').style.display = 'none';
+						document.getElementById('correct').style.display = 'flex';
+						/*
+						if (!cubeSolved) {
+							cubeSolved = true;
+							tickets += 7;
+							document.getElementById('tickets').innerHTML = "Tickets: " + tickets;
+						}
+						 */
+						tickets += 7
+						document.getElementById('tickets').innerHTML = "Tickets: " + tickets;
+						break;
+
+					case 'Digit2': // incorrect
+						//cubeSolved = true;
+						document.getElementById('question').style.display = 'none';
+						document.getElementById('answer1').style.display = 'none';
+						document.getElementById('answer2').style.display = 'none';
+						document.getElementById('incorrect').style.display = 'flex'
+						break;
+				}
+			}
+
+			document.addEventListener( 'keydown', interact );
+
+
+			function animate() {
+
+				const time = performance.now();
+
+				if ( controls.isLocked === true ) {
+
+					// PROXIMITY
+					if (!controlsDisabled && (moveForward || moveBackward || moveLeft || moveRight)) {
+						//console.log( inRange ); 
+						if ( camera.position.distanceTo(beanGuy1) < 30) {
+							inRange = 'beanGuy1';
+							document.getElementById('canInteract').style.display = 'flex';
+						} else if ( camera.position.distanceTo(beanGuy2) < 30) {
+							inRange = 'beanGuy2';
+							document.getElementById('canInteract').style.display = 'flex';
+						} else if ( camera.position.distanceTo(beanGuy3) < 30) {
+							inRange = 'beanGuy3';
+							document.getElementById('canInteract').style.display = 'flex';
+						} else {
+							inRange = 'none';
+							document.getElementById('canInteract').style.display = 'none';
+						}
+					}
+
+					raycaster.ray.origin.copy( controls.object.position );
+					raycaster.ray.origin.y -= 10;
+
+					const intersections = raycaster.intersectObjects( objects, false );
+
+					const onObject = intersections.length > 0;
+
+					const delta = ( time - prevTime ) / 1000;
+
+					velocity.x -= velocity.x * 10.0 * delta;
+					velocity.z -= velocity.z * 10.0 * delta;
+
+					velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
+
+					direction.z = Number( moveForward ) - Number( moveBackward );
+					direction.x = Number( moveRight ) - Number( moveLeft );
+					direction.normalize(); // this ensures consistent movements in all directions
+
+					if ( (moveForward || moveBackward) && !controlsDisabled ) velocity.z -= direction.z * 400.0 * delta;
+					if ( (moveLeft || moveRight) && !controlsDisabled ) velocity.x -= direction.x * 400.0 * delta;
+
+					if ( onObject === true ) {
+
+						velocity.y = Math.max( 0, velocity.y );
+
+					}
+
+					controls.moveRight( - velocity.x * delta );
+					controls.moveForward( - velocity.z * delta );
+
+					controls.object.position.y += ( velocity.y * delta ); // new behavior
+
+					if ( controls.object.position.y < 10 ) {
+
+						velocity.y = 0;
+						controls.object.position.y = 10;
+
+
+					}
+
+				}
+
+				prevTime = time;
+
+				renderer.render( scene, camera );
+
+			}
+
+
+
+
+
+		</script>
+	</body>
+</html>
+
