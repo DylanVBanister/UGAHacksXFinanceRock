@@ -16,7 +16,7 @@ Working with a new library, we faced challenges with understanding the different
 Library:
 Three.JS
 
-#Music:
+Music:
 "Big Rock"
 Kevin MacLeod (incompetech.com)
 Licensed under Creative Commons: By Attribution 3.0
@@ -27,4 +27,5 @@ NASA/Goddard Space Flight Center Scientific Visualization Studio. Gaia DR2: ESA/
 
 ## Running the Project:
 npm install
+
 npx vite
